@@ -1,29 +1,41 @@
-import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom'
+import { Outlet, NavLink, useNavigate, Link } from "react-router-dom";
 
 const NAV_LINKS = [
-  { to: '/dashboard',     label: 'Dashboard' },
-  { to: '/historial',     label: 'Historial General' },
-  { to: '/clientes',      label: 'Clientes' },
-  { to: '/configuracion', label: 'Configuración' },
-]
+  { to: "/dashboard", label: "Dashboard" },
+  { to: "/historial", label: "Reclamos" },
+  { to: "/clientes", label: "Clientes" },
+  { to: "/configuracion", label: "Configuración" },
+];
 
 export default function AppLayout() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   return (
     <div className="flex flex-col min-h-screen">
-      <header className="bg-white border-b border-outline-variant fixed top-0 w-full z-50" role="banner">
+      <header
+        className="bg-white border-b border-outline-variant fixed top-0 w-full z-50"
+        role="banner"
+      >
         <div className="flex justify-between items-center h-16 w-full px-8 max-w-full mx-auto">
           <div className="flex items-center gap-8">
-            <Link to="/dashboard" className="text-xl font-bold text-primary" aria-label="SupportCRM — Ir al inicio">
+            <Link
+              to="/dashboard"
+              className="text-xl font-bold text-primary"
+              aria-label="SupportCRM — Ir al inicio"
+            >
               SupportCRM
             </Link>
-            <nav aria-label="Navegación principal" className="hidden md:flex items-center gap-8">
-              {NAV_LINKS.map(link => (
+            <nav
+              aria-label="Navegación principal"
+              className="hidden md:flex items-center gap-8"
+            >
+              {NAV_LINKS.map((link) => (
                 <NavLink
                   key={link.to}
                   to={link.to}
-                  className={({ isActive }) => 'nav-link' + (isActive ? ' nav-link--active' : '')}
+                  className={({ isActive }) =>
+                    "nav-link" + (isActive ? " nav-link--active" : "")
+                  }
                 >
                   {link.label}
                 </NavLink>
@@ -32,11 +44,13 @@ export default function AppLayout() {
           </div>
           <div className="flex items-center gap-4">
             <button className="btn btn--icon" aria-label="Buscar">
-              <span className="material-symbols-outlined" aria-hidden="true">search</span>
+              <span className="material-symbols-outlined" aria-hidden="true">
+                search
+              </span>
             </button>
             <button
               className="btn btn--ghost rounded-lg px-md py-xs text-sm"
-              onClick={() => navigate('/')}
+              onClick={() => navigate("/")}
             >
               Cerrar Sesión
             </button>
@@ -55,18 +69,36 @@ export default function AppLayout() {
         <Outlet />
       </div>
 
-      <footer className="bg-surface-container-low border-t border-outline-variant" role="contentinfo">
+      <footer
+        className="bg-surface-container-low border-t border-outline-variant"
+        role="contentinfo"
+      >
         <div className="flex flex-col md:flex-row justify-between items-center py-6 px-8 gap-4">
           <p className="text-xs text-on-surface-variant">
             FIRMA.CL powered by eSign &nbsp;|&nbsp; CyberFenz powered by eSign
           </p>
           <nav aria-label="Navegación legal" className="flex gap-6">
-            <a href="#" className="text-xs text-on-surface-variant hover:text-primary transition-colors">Privacidad</a>
-            <a href="#" className="text-xs text-on-surface-variant hover:text-primary transition-colors">Términos</a>
-            <a href="#" className="text-xs text-on-surface-variant hover:text-primary transition-colors">Soporte</a>
+            <a
+              href="#"
+              className="text-xs text-on-surface-variant hover:text-primary transition-colors"
+            >
+              Privacidad
+            </a>
+            <a
+              href="#"
+              className="text-xs text-on-surface-variant hover:text-primary transition-colors"
+            >
+              Términos
+            </a>
+            <a
+              href="#"
+              className="text-xs text-on-surface-variant hover:text-primary transition-colors"
+            >
+              Soporte
+            </a>
           </nav>
         </div>
       </footer>
     </div>
-  )
+  );
 }
