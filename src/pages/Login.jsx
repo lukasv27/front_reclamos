@@ -1,19 +1,51 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 export default function Login() {
-  const navigate = useNavigate()
-  const [showPassword, setShowPassword] = useState(false)
+  const [showPassword, setShowPassword] = useState(false);
+  const [correo, setCorreo] = useState("");
+  const [contrasena, setContrasena] = useState("");
+  const navigate = useNavigate();
 
-  function handleSubmit(e) {
-    e.preventDefault()
-    navigate('/dashboard')
+  async function handleSubmit(e) {
+    e.preventDefault();
+
+    try {
+      const response = await axios.post(
+        "http://localhost:8080/api/auth/login",
+        {
+          correo: correo,
+          contrasena: contrasena,
+        },
+      );
+
+      const { token } = response.data;
+
+      //aqui se guarda el token
+
+      localStorage.setItem("token", token);
+
+      // Redirigir a la página principal del CRM
+      navigate("/historial");
+    } catch (error) {
+      console.error("Error al iniciar sesión:", error);
+      alert("Credenciales incorrectas. Por favor, intente nuevamente.");
+    }
+  }
+  function handleContrasenaChange(e) {
+    setContrasena(e.target.value);
+  }
+  function handleCorreoChange(e) {
+    setCorreo(e.target.value);
   }
 
   return (
-    <main className="flex-grow flex items-center justify-center p-gutter" role="main">
+    <main
+      className="flex-grow flex items-center justify-center p-gutter"
+      role="main"
+    >
       <div className="w-full max-w-md">
-
         {/* Branding */}
         <div className="flex flex-col items-center mb-xl">
           <div className="mb-lg">
@@ -23,7 +55,9 @@ export default function Login() {
               className="h-12 w-auto object-contain"
             />
           </div>
-          <h1 className="font-h1 text-h1 text-on-surface mb-xs">Bienvenido de nuevo</h1>
+          <h1 className="font-h1 text-h1 text-on-surface mb-xs">
+            Bienvenido de nuevo
+          </h1>
           <p className="font-body-md text-body-md text-on-surface-variant">
             Ingrese sus credenciales para acceder al CRM
           </p>
@@ -32,15 +66,22 @@ export default function Login() {
         {/* Formulario */}
         <div className="card shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] rounded-lg">
           <form onSubmit={handleSubmit} className="space-y-lg" noValidate>
-
             {/* Email */}
             <div className="space-y-xs">
-              <label htmlFor="email" className="font-label-sm text-label-sm text-on-surface uppercase tracking-wider block">
+              <label
+                htmlFor="email"
+                className="font-label-sm text-label-sm text-on-surface uppercase tracking-wider block"
+              >
                 Correo electrónico
               </label>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-md flex items-center pointer-events-none text-outline group-focus-within:text-primary transition-colors">
-                  <span className="material-symbols-outlined text-[20px]" aria-hidden="true">mail</span>
+                  <span
+                    className="material-symbols-outlined text-[20px]"
+                    aria-hidden="true"
+                  >
+                    mail
+                  </span>
                 </div>
                 <input
                   id="email"
@@ -49,6 +90,8 @@ export default function Login() {
                   required
                   autoComplete="email"
                   placeholder="nombre@ejemplo.com"
+                  value={correo}
+                  onChange={handleCorreoChange}
                   className="input-field pl-10 rounded-lg"
                 />
               </div>
@@ -57,34 +100,52 @@ export default function Login() {
             {/* Contraseña */}
             <div className="space-y-xs">
               <div className="flex justify-between items-end">
-                <label htmlFor="password" className="font-label-sm text-label-sm text-on-surface uppercase tracking-wider block">
+                <label
+                  htmlFor="password"
+                  className="font-label-sm text-label-sm text-on-surface uppercase tracking-wider block"
+                >
                   Contraseña
                 </label>
-                <a href="#" className="font-label-sm text-label-sm text-primary hover:underline transition-all">
+                <a
+                  href="#"
+                  className="font-label-sm text-label-sm text-primary hover:underline transition-all"
+                >
                   ¿Olvidó su contraseña?
                 </a>
               </div>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-md flex items-center pointer-events-none text-outline group-focus-within:text-primary transition-colors">
-                  <span className="material-symbols-outlined text-[20px]" aria-hidden="true">lock</span>
+                  <span
+                    className="material-symbols-outlined text-[20px]"
+                    aria-hidden="true"
+                  >
+                    lock
+                  </span>
                 </div>
                 <input
                   id="password"
                   name="password"
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   required
                   autoComplete="current-password"
                   placeholder="••••••••"
+                  value={contrasena}
+                  onChange={handleContrasenaChange}
                   className="input-field pl-10 pr-10 rounded-lg"
                 />
                 <button
                   type="button"
                   className="absolute inset-y-0 right-0 pr-md flex items-center text-outline hover:text-on-surface transition-colors"
-                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                  onClick={() => setShowPassword(v => !v)}
+                  aria-label={
+                    showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+                  }
+                  onClick={() => setShowPassword((v) => !v)}
                 >
-                  <span className="material-symbols-outlined text-[20px]" aria-hidden="true">
-                    {showPassword ? 'visibility_off' : 'visibility'}
+                  <span
+                    className="material-symbols-outlined text-[20px]"
+                    aria-hidden="true"
+                  >
+                    {showPassword ? "visibility_off" : "visibility"}
                   </span>
                 </button>
               </div>
@@ -98,7 +159,10 @@ export default function Login() {
                 type="checkbox"
                 className="h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary"
               />
-              <label htmlFor="remember" className="font-body-md text-body-md text-on-surface-variant">
+              <label
+                htmlFor="remember"
+                className="font-body-md text-body-md text-on-surface-variant"
+              >
                 Recordar en este dispositivo
               </label>
             </div>
@@ -108,7 +172,9 @@ export default function Login() {
               className="btn btn--primary w-full py-lg px-xl rounded-lg text-body-lg justify-center shadow-md"
             >
               Iniciar Sesión
-              <span className="material-symbols-outlined" aria-hidden="true">login</span>
+              <span className="material-symbols-outlined" aria-hidden="true">
+                login
+              </span>
             </button>
           </form>
 
@@ -119,12 +185,28 @@ export default function Login() {
                 ¿Necesita ayuda con su cuenta?
               </p>
               <div className="flex gap-lg">
-                <a href="#" className="flex items-center gap-xs font-body-md text-body-md text-primary hover:text-primary-container transition-colors">
-                  <span className="material-symbols-outlined text-[18px]" aria-hidden="true">support_agent</span>
+                <a
+                  href="#"
+                  className="flex items-center gap-xs font-body-md text-body-md text-primary hover:text-primary-container transition-colors"
+                >
+                  <span
+                    className="material-symbols-outlined text-[18px]"
+                    aria-hidden="true"
+                  >
+                    support_agent
+                  </span>
                   Soporte IT
                 </a>
-                <a href="#" className="flex items-center gap-xs font-body-md text-body-md text-primary hover:text-primary-container transition-colors">
-                  <span className="material-symbols-outlined text-[18px]" aria-hidden="true">help_outline</span>
+                <a
+                  href="#"
+                  className="flex items-center gap-xs font-body-md text-body-md text-primary hover:text-primary-container transition-colors"
+                >
+                  <span
+                    className="material-symbols-outlined text-[18px]"
+                    aria-hidden="true"
+                  >
+                    help_outline
+                  </span>
                   Documentación
                 </a>
               </div>
@@ -141,10 +223,13 @@ export default function Login() {
       </div>
 
       {/* Degradados decorativos */}
-      <div className="fixed top-0 left-0 w-full h-full -z-10 overflow-hidden pointer-events-none" aria-hidden="true">
+      <div
+        className="fixed top-0 left-0 w-full h-full -z-10 overflow-hidden pointer-events-none"
+        aria-hidden="true"
+      >
         <div className="absolute -top-[10%] -left-[5%] w-[40%] h-[50%] bg-surface-container-high rounded-full blur-[120px] opacity-40" />
         <div className="absolute -bottom-[10%] -right-[5%] w-[40%] h-[50%] bg-surface-container-high rounded-full blur-[120px] opacity-40" />
       </div>
     </main>
-  )
+  );
 }
