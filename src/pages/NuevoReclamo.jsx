@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "../firebase"; // Asegúrate de que la ruta a tu config de firebase sea correcta
 
 export default function NuevoReclamo() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
 
   // Estados del Formulario (Campos del Cliente)
   const [clienteNombre, setClienteNombre] = useState("");
@@ -20,14 +20,14 @@ export default function NuevoReclamo() {
 
   // Efecto para auto-rellenar si venimos desde la ficha de un cliente específico
   useEffect(() => {
-    const nombreParam = searchParams.get("nombre");
-    const rutParam = searchParams.get("rut");
-    const telParam = searchParams.get("telefono");
+    if (location.state) {
+      const { clienteNombre, clienteRut, clienteTelefono } = location.state;
 
-    if (nombreParam) setClienteNombre(nombreParam);
-    if (rutParam) setClienteRut(rutParam);
-    if (telParam) setClienteTelefono(telParam);
-  }, [searchParams]);
+      if (clienteNombre) setClienteNombre(clienteNombre);
+      if (clienteRut) setClienteRut(clienteRut);
+      if (clienteTelefono) setClienteTelefono(clienteTelefono);
+    }
+  }, [location.state]);
 
   // Manejador del envío a Firebase
   async function handleSubmit(e) {
