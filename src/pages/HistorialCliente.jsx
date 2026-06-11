@@ -235,7 +235,7 @@ export default function HistorialCliente() {
                 <tbody className="text-body-md text-on-surface divide-y divide-outline-variant">
                   {historial.map((h) => (
                     <tr key={h.id} className="table-tr">
-                      <td className="table-td">{h.ticket || "Sin Ticket"}</td>
+                      <td className="table-td">#{h.ticket || "Sin Ticket"}</td>
                       <td className="table-td">{h.fecha}</td>
                       <td className="table-td">{h.motivo}</td>
                       <td className="table-td">{h.prioridad}</td>
