@@ -18,7 +18,8 @@ export default function App() {
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/historial" element={<HistorialGeneral />} />
-          <Route path="/clientes" element={<HistorialCliente />} />
+          {/* CAMBIAMOS ESTA LÍNEA PARA QUE RECIBA EL RUT DEL CLIENTE */}
+          <Route path="/clientes/:rut" element={<HistorialCliente />} />
           <Route path="/nuevo-reclamo" element={<NuevoReclamo />} />
           <Route path="/configuracion" element={<EnProgreso />} />
         </Route>
