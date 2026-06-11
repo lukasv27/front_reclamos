@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+// import axios from "axios";
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -11,28 +11,35 @@ export default function Login() {
   async function handleSubmit(e) {
     e.preventDefault();
 
-    try {
-      const response = await axios.post(
-        "http://localhost:8080/api/auth/login",
-        {
-          correo: correo,
-          contrasena: contrasena,
-        },
-      );
-
-      const { token } = response.data;
-
-      //aqui se guarda el token
-
-      localStorage.setItem("token", token);
-
-      // Redirigir a la página principal del CRM
+    if (correo === "admin@agora.cl" && contrasena === "admin123") {
       navigate("/historial");
-    } catch (error) {
-      console.error("Error al iniciar sesión:", error);
+    } else {
       alert("Credenciales incorrectas. Por favor, intente nuevamente.");
     }
   }
+
+  //   try {
+  //     const response = await axios.post(
+  //       "http://localhost:8080/api/auth/login",
+  //       {
+  //         correo: correo,
+  //         contrasena: contrasena,
+  //       },
+  //     );
+
+  //     const { token } = response.data;
+
+  //     //aqui se guarda el token
+
+  //     localStorage.setItem("token", token);
+
+  //     // Redirigir a la página principal del CRM
+  //     navigate("/historial");
+  //   } catch (error) {
+  //     console.error("Error al iniciar sesión:", error);
+  //     alert("Credenciales incorrectas. Por favor, intente nuevamente.");
+  //   }
+  // }
   function handleContrasenaChange(e) {
     setContrasena(e.target.value);
   }

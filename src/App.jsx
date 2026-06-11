@@ -1,12 +1,12 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import AppLayout from './layouts/AppLayout'
-import AuthLayout from './layouts/AuthLayout'
-import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
-import HistorialGeneral from './pages/HistorialGeneral'
-import HistorialCliente from './pages/HistorialCliente'
-import NuevoReclamo from './pages/NuevoReclamo'
-import EnProgreso from './pages/EnProgreso'
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import AppLayout from "./layouts/AppLayout";
+import AuthLayout from "./layouts/AuthLayout";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+import HistorialGeneral from "./pages/HistorialGeneral";
+import HistorialCliente from "./pages/HistorialCliente";
+import NuevoReclamo from "./pages/NuevoReclamo";
+import EnProgreso from "./pages/EnProgreso";
 
 export default function App() {
   return (
@@ -25,5 +25,5 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
-  )
+  );
 }

@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { collection, addDoc } from "firebase/firestore";
+import { db } from "../firebase";
 
 export default function ClaimDrawer({ open, onClose, onReclamoCreado }) {
+  const [ticket, setTicket] = useState("");
   const [motivo, setMotivo] = useState("");
   const [prioridad, setPrioridad] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [estado, setEstado] = useState("");
   const [fecha, setFecha] = useState("");
+
+  const numeroTicket = Math.floor(100000 + Math.random() * 900000);
 
   useEffect(() => {
     function onKey(e) {
@@ -23,30 +27,33 @@ export default function ClaimDrawer({ open, onClose, onReclamoCreado }) {
   const crearReclamo = async () => {
     try {
       const reclamo = {
+        ticket: Math.floor(1000 + Math.random() * 9000),
         motivo,
         prioridad,
         estado,
         descripcion,
         fecha,
+        fechaCreacion: new Date().toISOString(),
       };
 
-      await axios.post("http://localhost:8080/api/reclamos", reclamo);
+      await addDoc(collection(db, "reclamos"), reclamo);
 
       if (onReclamoCreado) onReclamoCreado();
 
       alert("Reclamo creado correctamente");
-
+      setTicket("");
       setMotivo("");
       setPrioridad("");
+      setEstado("");
       setDescripcion("");
       setFecha("");
+
       onClose();
     } catch (error) {
       console.error(error);
       alert("Error al crear reclamo");
     }
   };
-
   return (
     <>
       {/* Overlay */}

@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import ClaimDrawer from "../components/ClaimDrawer";
 import StatusBadge from "../components/StatusBadge";
 import axios from "axios";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../firebase";
 
 export default function HistorialCliente() {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -14,9 +16,14 @@ export default function HistorialCliente() {
 
   const cargarReclamos = async () => {
     try {
-      const response = await axios.get("http://localhost:8080/api/reclamos");
+      const querySnapshot = await getDocs(collection(db, "reclamos"));
 
-      setHistorial(response.data);
+      const reclamos = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      setHistorial(reclamos);
     } catch (error) {
       console.error(error);
     }
@@ -227,8 +234,8 @@ export default function HistorialCliente() {
                 </thead>
                 <tbody className="text-body-md text-on-surface divide-y divide-outline-variant">
                   {historial.map((h) => (
-                    <tr key={h.id}>
-                      <td className="table-td">{h.id}</td>
+                    <tr key={h.id} className="table-tr">
+                      <td className="table-td">{h.ticket || "Sin Ticket"}</td>
                       <td className="table-td">{h.fecha}</td>
                       <td className="table-td">{h.motivo}</td>
                       <td className="table-td">{h.prioridad}</td>
