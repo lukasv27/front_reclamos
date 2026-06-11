@@ -56,17 +56,19 @@ export default function Login() {
         {/* Branding */}
         <div className="flex flex-col items-center mb-xl">
           <div className="mb-lg">
-            <img
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBi1cBhzvL_vwCym4ymRIreRvAOC2UqFDE1DyOwqR62yif2LOidZ2eXKgLMZY7v6qOLhcV-XwIDrntizYkn-tG9NJcnl9XjhWm7JDBOf5qs9MhL1UiL2oTMszXKKbBOCpcGabPduLVTKnF6vAADtqJTYYlTqEADMEIZs2EuMuy20I7RPIucVXyelFAZu_bfsbrrQJJeQviasptPMHefDh2dsfamOiZHTujIjZp_bpcSqX0Q95njmFMpYMaFtIPPhT5nIqCicfdzWVhh"
-              alt="SupportCRM Logo"
-              className="h-12 w-auto object-contain"
-            />
+            <h1 className="text-5xl font-light tracking-[0.2em] text-on-surface uppercase pl-[0.2em]">
+              AGO<span className="font-black text-primary">RA</span>
+              <span className="text-blue-500 font-black animate-pulse">.</span>
+            </h1>
           </div>
-          <h1 className="font-h1 text-h1 text-on-surface mb-xs">
+          <h1 className="font-h1 text-h3 text-on-surface mb-xs">
             Bienvenido de nuevo
           </h1>
           <p className="font-body-md text-body-md text-on-surface-variant">
-            Bienvenido a Agora CL. Ingrese sus credenciales para continuar.
+            Ingrese sus credenciales para continuar.
+          </p>
+          <p className="text-xs font-semibold tracking-widest text-on-surface-variant/60 uppercase mt-2">
+            Workspace de Soluciones
           </p>
         </div>
 
