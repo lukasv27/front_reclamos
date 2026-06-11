@@ -330,7 +330,7 @@ export default function Dashboard() {
             {actividadReciente.map((t, index) => (
               <li key={t.id || index} className="relative">
                 <Link
-                  to={`/clientes?ticketId=${t.id}`}
+                  to={`/clientes/${t.clienteRut}`}
                   className="flex gap-md p-sm rounded-md transition-all duration-200 hover:bg-surface-container-low group block"
                 >
                   <div className="flex flex-col items-center flex-shrink-0">
@@ -421,7 +421,7 @@ export default function Dashboard() {
                   >
                     <td className="table-td font-medium text-primary">
                       <Link
-                        to={`/clientes?ticketId=${t.id}`}
+                        to={`/clientes/${t.clienteRut}`}
                         className="hover:underline cursor-pointer"
                       >
                         #{t.ticketId}
@@ -429,7 +429,7 @@ export default function Dashboard() {
                     </td>
                     <td className="table-td font-medium text-on-surface">
                       <Link
-                        to={`/clientes?ticketId=${t.id}`}
+                        to={`/gestion/${t.id}`}
                         className="hover:underline cursor-pointer"
                       >
                         {t.clienteNombre}
