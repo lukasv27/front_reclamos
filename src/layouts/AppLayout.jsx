@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate, Link } from "react-router-dom";
 const NAV_LINKS = [
   { to: "/dashboard", label: "Dashboard" },
   { to: "/historial", label: "Historial General" },
-  { to: "/clientes", label: "Clientes" },
+
   { to: "/nuevo-reclamo", label: "Nuevo Ticket" }, // Apunta a la ruta real de tu navegador
 ];
 
