@@ -2,9 +2,9 @@ import { Outlet, NavLink, useNavigate, Link } from "react-router-dom";
 
 const NAV_LINKS = [
   { to: "/dashboard", label: "Dashboard" },
-  { to: "/historial", label: "Reclamos" },
+  { to: "/historial", label: "Historial General" },
   { to: "/clientes", label: "Clientes" },
-  { to: "/configuracion", label: "Configuración" },
+  { to: "/nuevo-reclamo", label: "Nuevo Ticket" }, // Apunta a la ruta real de tu navegador
 ];
 
 export default function AppLayout() {
@@ -18,13 +18,15 @@ export default function AppLayout() {
       >
         <div className="flex justify-between items-center h-16 w-full px-8 max-w-full mx-auto">
           <div className="flex items-center gap-8">
+            {/* Nuevo nombre del sistema: AGORA */}
             <Link
               to="/dashboard"
-              className="text-xl font-bold text-primary"
-              aria-label="SupportCRM — Ir al inicio"
+              className="text-xl font-bold text-primary tracking-wide"
+              aria-label="AGORA — Ir al inicio"
             >
-              SupportCRM
+              AGORA
             </Link>
+
             <nav
               aria-label="Navegación principal"
               className="hidden md:flex items-center gap-8"
@@ -42,24 +44,28 @@ export default function AppLayout() {
               ))}
             </nav>
           </div>
+
           <div className="flex items-center gap-4">
-            <button className="btn btn--icon" aria-label="Buscar">
-              <span className="material-symbols-outlined" aria-hidden="true">
-                search
-              </span>
-            </button>
+            {/* La lupa de búsqueda ha sido eliminada exitosamente */}
+
             <button
               className="btn btn--ghost rounded-lg px-md py-xs text-sm"
               onClick={() => navigate("/")}
             >
               Cerrar Sesión
             </button>
-            <div className="h-9 w-9 rounded-full overflow-hidden border border-outline-variant flex-shrink-0">
-              <img
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuB7gMXGyG_myZWaMm6ww0ofECtVhH7YQi2QGAd6y5MAsMTvhWpvnAi3x4A0iIepVEsuyaHQ6eikjcEeJEIHBacqJBYeywLpYz_rEp94FpXTDvBlLdtPfd1p83aiKh1y7_srn3EDlP-x910J6BBoKpqXlmZMwLPsRK5_lOAjBGUBK0FM2cqmTiaqEIBNCB7qPXfYy-_SE5Mi3NLhZ9wK27fjCuizmEDgYW4N3qnw2O0Drh3ZD3nUyp7mLF7rVDIjUfGlFeTsgFWfLbBY"
-                alt="Foto de perfil del agente"
-                className="h-full w-full object-cover"
-              />
+
+            {/* Foto de perfil reemplazada por una silueta por defecto usando Material Symbols */}
+            <div
+              className="h-9 w-9 rounded-full bg-surface-container-highest border border-outline-variant flex items-center justify-center flex-shrink-0 text-on-surface-variant"
+              title="Perfil del agente"
+            >
+              <span
+                className="material-symbols-outlined text-[24px]"
+                aria-hidden="true"
+              >
+                account_circle
+              </span>
             </div>
           </div>
         </div>

@@ -2,106 +2,89 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   collection,
-  onSnapshot,
   query,
   orderBy,
+  onSnapshot,
   addDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import { db } from "../firebase";
-import MetricCard from "../components/MetricCard";
-import StatusBadge from "../components/StatusBadge";
+import { db } from "../firebase"; // Ajusta la ruta si es necesario
+import MetricCard from "../components/MetricCard"; // Asumo que tienes este componente extraído
+import StatusBadge from "../components/StatusBadge"; // Asumo que tienes este componente extraído
 
+// NUEVOS DATOS DE PRUEBA ESTANDARIZADOS
 const MOCK_TICKETS = [
   {
-    ticketId: "8945",
+    ticketId: "894582",
     clienteNombre: "María González",
+    clienteRut: "15.456.789-0",
+    clienteTelefono: "+56 9 1234 5678",
     prioridad: "Alta",
     estado: "pending",
-    categoria: "Soporte Técnico",
-    asunto: "Corte de internet en horas de teletrabajo",
-    updated: "Hace 12 min",
+    categoria: "Falla Técnica",
+    descripcion:
+      "El router se reinicia solo cada 10 minutos. Imposible teletrabajar así.",
+    fecha: "11/06/2026 09:15",
   },
   {
-    ticketId: "8944",
+    ticketId: "894412",
     clienteNombre: "Robert Wilson",
+    clienteRut: "18.123.456-K",
+    clienteTelefono: "+56 9 8765 4321",
     prioridad: "Media",
     estado: "in-progress",
     categoria: "Facturación",
-    asunto: "Cobro duplicado en la boleta de Mayo",
-    updated: "Hace 45 min",
+    descripcion:
+      "Me cobraron dos veces la suscripción mensual en la tarjeta de crédito.",
+    fecha: "11/06/2026 10:30",
   },
   {
-    ticketId: "8941",
+    ticketId: "894100",
     clienteNombre: "Elena Castrillón",
+    clienteRut: "12.987.654-3",
+    clienteTelefono: "+56 9 5555 6666",
     prioridad: "Baja",
     estado: "solved",
-    categoria: "Instalación",
-    asunto: "Solicitud de traslado de router",
-    updated: "Hace 2 horas",
+    categoria: "Atención al Cliente",
+    descripcion:
+      "Necesito orientación para cambiar la titularidad de mi cuenta a mi esposo.",
+    fecha: "10/06/2026 16:45",
   },
   {
-    ticketId: "8942",
+    ticketId: "894299",
     clienteNombre: "Juan Pérez",
+    clienteRut: "10.111.222-4",
+    clienteTelefono: "+56 9 4444 3333",
     prioridad: "Alta",
     estado: "pending",
-    categoria: "Soporte Técnico",
-    asunto: "Falla crítica de sistema de enlace",
-    updated: "Hace 15 min",
+    categoria: "Falla Técnica",
+    descripcion:
+      "Corte total del servicio de fibra óptica desde anoche en todo el condominio.",
+    fecha: "11/06/2026 11:20",
   },
   {
-    ticketId: "8940",
+    ticketId: "894088",
     clienteNombre: "Carlos Mendoza",
+    clienteRut: "17.555.444-1",
+    clienteTelefono: "+56 9 2222 1111",
     prioridad: "Media",
     estado: "in-progress",
-    categoria: "Envíos",
-    asunto: "Retraso en entrega de nuevo decodificador",
-    updated: "Hace 3 horas",
+    categoria: "Demora en Entrega",
+    descripcion:
+      "El decodificador de reemplazo debió llegar ayer y no he recibido noticias.",
+    fecha: "11/06/2026 08:10",
   },
   {
-    ticketId: "8939",
+    ticketId: "893977",
     clienteNombre: "Francisca Rojas",
+    clienteRut: "19.333.222-5",
+    clienteTelefono: "+56 9 9999 8888",
     prioridad: "Alta",
     estado: "pending",
     categoria: "Facturación",
-    asunto: "No se ve reflejado el pago de la suscripción",
-    updated: "Hace 4 horas",
-  },
-  {
-    ticketId: "8938",
-    clienteNombre: "Andrés Muñoz",
-    prioridad: "Baja",
-    estado: "solved",
-    categoria: "Otros",
-    asunto: "Consulta sobre cambio de titular de cuenta",
-    updated: "Hace 1 día",
-  },
-  {
-    ticketId: "8937",
-    clienteNombre: "Sonia Olivares",
-    prioridad: "Alta",
-    estado: "in-progress",
-    categoria: "Soporte Técnico",
-    asunto: "Intermitencia constante en WiFi",
-    updated: "Hace 1 día",
-  },
-  {
-    ticketId: "8936",
-    clienteNombre: "Jorge Valdivia",
-    prioridad: "Media",
-    estado: "solved",
-    categoria: "Facturación",
-    asunto: "Error en el desglose de impuestos",
-    updated: "Hace 2 días",
-  },
-  {
-    ticketId: "8935",
-    clienteNombre: "Camila Silva",
-    prioridad: "Baja",
-    estado: "solved",
-    categoria: "Instalación",
-    asunto: "Felicitaciones por la rapidez del técnico",
-    updated: "Hace 3 días",
+    descripcion:
+      "Pagué ayer pero en el portal sigo saliendo en estado moroso con aviso de corte.",
+    fecha: "11/06/2026 12:40",
   },
 ];
 
@@ -109,17 +92,17 @@ export default function Dashboard() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Escuchar Firebase en tiempo real y auto-poblar si está vacío
+  // Escuchar Firebase en tiempo real (AHORA APUNTA A 'tickets')
   useEffect(() => {
-    const q = query(collection(db, "reclamos"), orderBy("createdAt", "desc"));
+    const q = query(collection(db, "tickets"), orderBy("createdAt", "desc"));
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
         if (snapshot.empty) {
-          // Si la base de datos está totalmente vacía, la poblamos en silencio inmediatamente
+          // Poblado silencioso con los nuevos datos si la DB 'tickets' está vacía
           MOCK_TICKETS.forEach(async (ticket) => {
-            await addDoc(collection(db, "reclamos"), {
+            await addDoc(collection(db, "tickets"), {
               ...ticket,
               createdAt: serverTimestamp(),
             });
@@ -148,40 +131,42 @@ export default function Dashboard() {
   const enProceso = tickets.filter((t) => t.estado === "in-progress").length;
   const solucionados = tickets.filter((t) => t.estado === "solved").length;
 
-  // Contador por categorías para el gráfico
+  // Contador por las nuevas categorías para el gráfico
   const categoriasContador = {
-    Técnico: tickets.filter(
-      (t) => t.categoria === "Soporte Técnico" || t.categoria === "Técnico",
-    ).length,
+    "Falla Técnica": tickets.filter((t) => t.categoria === "Falla Técnica")
+      .length,
     Facturación: tickets.filter((t) => t.categoria === "Facturación").length,
-    Envíos: tickets.filter((t) => t.categoria === "Envíos").length,
-    Instalación: tickets.filter((t) => t.categoria === "Instalación").length,
-    Otros: tickets.filter((t) => t.categoria === "Otros").length,
+    "Demora en Entrega": tickets.filter(
+      (t) => t.categoria === "Demora en Entrega",
+    ).length,
+    "Atención al Cliente": tickets.filter(
+      (t) => t.categoria === "Atención al Cliente",
+    ).length,
   };
 
   const maxIncidencias = Math.max(...Object.values(categoriasContador), 1);
 
+  // Mapeo de datos para las barras con los nuevos nombres
   const barsData = [
-    { label: "Técnico", count: categoriasContador["Técnico"], opacity: "" },
+    {
+      label: "Falla Técnica",
+      count: categoriasContador["Falla Técnica"],
+      opacity: "",
+    },
     {
       label: "Facturación",
       count: categoriasContador["Facturación"],
       opacity: "opacity-80",
     },
     {
-      label: "Envíos",
-      count: categoriasContador["Envíos"],
+      label: "Demora en Entrega",
+      count: categoriasContador["Demora en Entrega"],
       opacity: "opacity-60",
     },
     {
-      label: "Instalación",
-      count: categoriasContador["Instalación"],
+      label: "Atención al Cliente",
+      count: categoriasContador["Atención al Cliente"],
       opacity: "opacity-40",
-    },
-    {
-      label: "Otros",
-      count: categoriasContador["Otros"],
-      opacity: "opacity-30",
     },
   ];
 
@@ -270,7 +255,7 @@ export default function Dashboard() {
             </span>
           </div>
 
-          {/* Contenedor del Gráfico con Altura Fija y Flexbox correcto */}
+          {/* Contenedor del Gráfico */}
           <div
             className="h-64 flex items-end gap-md px-md pb-sm border-b border-outline-variant"
             role="img"
@@ -278,7 +263,6 @@ export default function Dashboard() {
           >
             {barsData.map((bar) => {
               const alturaPorcentaje = (bar.count / maxIncidencias) * 100;
-              // Garantizamos un mínimo de altura visible si el conteo es mayor a cero
               const heightStyle =
                 bar.count > 0 ? `${Math.max(alturaPorcentaje, 15)}%` : "0%";
 
@@ -287,18 +271,13 @@ export default function Dashboard() {
                   key={bar.label}
                   className="flex-1 h-full flex flex-col justify-end items-center gap-xs group"
                 >
-                  {/* Valor flotante en Hover */}
                   <span className="font-label-sm text-primary font-bold transition-all duration-200 opacity-100 transform translate-y-0 group-hover:-translate-y-1">
                     {bar.count}
                   </span>
-
-                  {/* Cuerpo de la Barra */}
                   <div
                     className={`w-full max-w-[44px] bg-[#4A83C3] ${bar.opacity} rounded-t-md transition-all duration-500 shadow-sm group-hover:scale-x-105 group-hover:opacity-100`}
                     style={{ height: heightStyle }}
                   />
-
-                  {/* Etiqueta del Eje X */}
                   <span className="font-label-sm text-label-sm text-on-surface-variant text-center truncate w-full mt-xs">
                     {bar.label}
                   </span>
@@ -313,9 +292,7 @@ export default function Dashboard() {
                 Mayor Incidencia
               </p>
               <p className="font-body-lg text-body-lg font-semibold text-primary">
-                {mayorCategoria === "Técnico"
-                  ? "Soporte Técnico"
-                  : mayorCategoria}
+                {mayorCategoria}
               </p>
             </div>
             <div>
@@ -338,7 +315,7 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* Actividad reciente */}
+        {/* Actividad reciente - ACTUALIZADA A LA NUEVA ESTRUCTURA */}
         <section
           className="card rounded-lg flex flex-col"
           aria-labelledby="activity-title"
@@ -349,24 +326,16 @@ export default function Dashboard() {
           >
             Actividad Reciente
           </h3>
-
           <ol className="space-y-sm flex-grow list-none p-0">
             {actividadReciente.map((t, index) => (
               <li key={t.id || index} className="relative">
-                {/* Envolvemos todo el contenido en un Link dinámico */}
                 <Link
                   to={`/clientes?ticketId=${t.id}`}
                   className="flex gap-md p-sm rounded-md transition-all duration-200 hover:bg-surface-container-low group block"
                 >
                   <div className="flex flex-col items-center flex-shrink-0">
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center z-10 transition-transform group-hover:scale-105 ${
-                        t.estado === "pending"
-                          ? "bg-error-container text-error"
-                          : t.estado === "in-progress"
-                            ? "bg-surface-container-highest text-primary-container"
-                            : "bg-tertiary-fixed text-tertiary"
-                      }`}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center z-10 transition-transform group-hover:scale-105 ${t.estado === "pending" ? "bg-error-container text-error" : t.estado === "in-progress" ? "bg-surface-container-highest text-primary-container" : "bg-tertiary-fixed text-tertiary"}`}
                     >
                       <span
                         className="material-symbols-outlined text-[18px]"
@@ -389,18 +358,17 @@ export default function Dashboard() {
                       Ticket #{t.ticketId || t.id.slice(0, 4)}
                     </p>
                     <p className="font-label-sm text-label-sm text-on-surface-variant truncate pr-xs">
-                      {t.asunto} —{" "}
-                      <span className="font-semibold">{t.clienteNombre}</span>
+                      <span className="font-semibold">{t.clienteNombre}</span> —{" "}
+                      {t.descripcion}
                     </p>
                     <time className="font-label-sm text-[10px] text-on-secondary-container block mt-xs">
-                      {t.updated || "Reciente"}
+                      {t.fecha || "Reciente"}
                     </time>
                   </div>
                 </Link>
               </li>
             ))}
           </ol>
-
           <Link
             to="/historial"
             className="btn btn--secondary mt-lg w-full justify-center rounded-lg"
@@ -451,7 +419,6 @@ export default function Dashboard() {
                     key={t.id}
                     className="hover:bg-surface-container-low transition-colors"
                   >
-                    {/* ID Ticket con Link clickable */}
                     <td className="table-td font-medium text-primary">
                       <Link
                         to={`/clientes?ticketId=${t.id}`}
@@ -460,8 +427,6 @@ export default function Dashboard() {
                         #{t.ticketId}
                       </Link>
                     </td>
-
-                    {/* Nombre Cliente con Link clickable */}
                     <td className="table-td font-medium text-on-surface">
                       <Link
                         to={`/clientes?ticketId=${t.id}`}
@@ -470,8 +435,6 @@ export default function Dashboard() {
                         {t.clienteNombre}
                       </Link>
                     </td>
-
-                    {/* Prioridad mapeada al StatusBadge */}
                     <td className="table-td">
                       <StatusBadge
                         status={
@@ -485,18 +448,10 @@ export default function Dashboard() {
                         {t.prioridad}
                       </StatusBadge>
                     </td>
-
-                    {/* Estado traducido dinámicamente con color de punto adaptativo */}
                     <td className="table-td">
                       <div className="flex items-center gap-xs capitalize">
                         <span
-                          className={`w-2 h-2 rounded-full ${
-                            t.estado === "pending"
-                              ? "bg-error"
-                              : t.estado === "in-progress"
-                                ? "bg-primary"
-                                : "bg-tertiary"
-                          }`}
+                          className={`w-2 h-2 rounded-full ${t.estado === "pending" ? "bg-error" : t.estado === "in-progress" ? "bg-primary" : "bg-tertiary"}`}
                           aria-hidden="true"
                         />
                         {t.estado === "pending" && "Pendiente"}
@@ -504,8 +459,6 @@ export default function Dashboard() {
                         {t.estado === "solved" && "Solucionado"}
                       </div>
                     </td>
-
-                    {/* Categoría del Ticket */}
                     <td className="table-td text-on-surface-variant">
                       {t.categoria}
                     </td>
@@ -517,7 +470,7 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* FAB (Floating Action Button) con Tooltip */}
+      {/* FAB */}
       <div className="fixed bottom-margin right-margin z-50">
         <Link
           to="/nuevo-reclamo"
@@ -525,12 +478,9 @@ export default function Dashboard() {
           aria-label="Crear nuevo ticket"
           title="Crear nuevo ticket"
         >
-          {/* Etiqueta flotante (Tooltip) */}
           <span className="absolute right-16 top-1/2 -translate-y-1/2 bg-surface-container-highest text-on-surface border border-outline-variant px-md py-xs rounded-md font-label-sm text-label-sm whitespace-nowrap shadow-md opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 transition-all duration-200">
             Crear nuevo ticket
           </span>
-
-          {/* Icono con animación de rotación sutil en hover */}
           <span
             className="material-symbols-outlined transition-transform duration-300 group-hover:rotate-90"
             aria-hidden="true"
