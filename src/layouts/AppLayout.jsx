@@ -84,24 +84,24 @@ export default function AppLayout() {
             FIRMA.CL powered by eSign &nbsp;|&nbsp; CyberFenz powered by eSign
           </p>
           <nav aria-label="Navegación legal" className="flex gap-6">
-            <a
+            <h1
               href="#"
               className="text-xs text-on-surface-variant hover:text-primary transition-colors"
             >
               Privacidad
-            </a>
-            <a
+            </h1>
+            <h1
               href="#"
               className="text-xs text-on-surface-variant hover:text-primary transition-colors"
             >
               Términos
-            </a>
-            <a
+            </h1>
+            <h1
               href="#"
               className="text-xs text-on-surface-variant hover:text-primary transition-colors"
             >
               Soporte
-            </a>
+            </h1>
           </nav>
         </div>
       </footer>

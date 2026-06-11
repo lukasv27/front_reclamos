@@ -66,7 +66,7 @@ export default function Login() {
             Bienvenido de nuevo
           </h1>
           <p className="font-body-md text-body-md text-on-surface-variant">
-            Ingrese sus credenciales para acceder al CRM
+            Bienvenido a Agora CL. Ingrese sus credenciales para continuar.
           </p>
         </div>
 
@@ -113,12 +113,9 @@ export default function Login() {
                 >
                   Contraseña
                 </label>
-                <a
-                  href="#"
-                  className="font-label-sm text-label-sm text-primary hover:underline transition-all"
-                >
+                <h1 className="font-label-sm text-label-sm text-primary  transition-all">
                   ¿Olvidó su contraseña?
-                </a>
+                </h1>
               </div>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-md flex items-center pointer-events-none text-outline group-focus-within:text-primary transition-colors">
@@ -192,9 +189,9 @@ export default function Login() {
                 ¿Necesita ayuda con su cuenta?
               </p>
               <div className="flex gap-lg">
-                <a
+                <h1
                   href="#"
-                  className="flex items-center gap-xs font-body-md text-body-md text-primary hover:text-primary-container transition-colors"
+                  className="flex items-center gap-xs font-body-md text-body-md text-primary  "
                 >
                   <span
                     className="material-symbols-outlined text-[18px]"
@@ -203,8 +200,8 @@ export default function Login() {
                     support_agent
                   </span>
                   Soporte IT
-                </a>
-                <a
+                </h1>
+                <h1
                   href="#"
                   className="flex items-center gap-xs font-body-md text-body-md text-primary hover:text-primary-container transition-colors"
                 >
@@ -215,7 +212,7 @@ export default function Login() {
                     help_outline
                   </span>
                   Documentación
-                </a>
+                </h1>
               </div>
             </div>
           </div>
