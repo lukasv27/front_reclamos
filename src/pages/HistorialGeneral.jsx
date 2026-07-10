@@ -51,16 +51,6 @@ export default function HistorialGeneral() {
 
   const totalPaginas = Math.ceil(filteredTickets.length / ticketsPorPagina);
 
-  // Cálculos para Distribución (Ahora suma 100%)
-  const totalTickets = tickets.length || 1;
-  const pendientes = tickets.filter((t) => t.estado === "pending").length;
-  const enProceso = tickets.filter((t) => t.estado === "in-progress").length;
-  const solucionados = tickets.filter((t) => t.estado === "solved").length;
-
-  const pctPendientes = Math.round((pendientes / totalTickets) * 100);
-  const pctEnProceso = Math.round((enProceso / totalTickets) * 100);
-  const pctSolucionados = Math.round((solucionados / totalTickets) * 100);
-
   return (
     <main
       className="mt-16 flex-grow container mx-auto px-margin py-xl"
@@ -239,87 +229,6 @@ export default function HistorialGeneral() {
             {index + 1}
           </button>
         ))}
-      </div>
-
-      {/* --- SECCIÓN SECUNDARIA: INSIGHTS --- */}
-      <div className="mt-xl grid grid-cols-1 md:grid-cols-3 gap-gutter">
-        <article
-          className="card rounded-xl border border-outline-variant bg-white p-4 shadow-sm"
-          aria-labelledby="dist-title"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 id="dist-title" className="font-bold text-h3 text-on-surface">
-              Distribución Actual
-            </h3>
-            <span
-              className="material-symbols-outlined text-on-surface-variant"
-              aria-hidden="true"
-            >
-              pie_chart
-            </span>
-          </div>
-          <div className="space-y-4">
-            {/* Barra Pendientes */}
-            <div>
-              <div className="flex justify-between items-center text-body-md mb-1">
-                <span className="flex items-center gap-2">
-                  <span
-                    className="w-2 h-2 rounded-full bg-error"
-                    aria-hidden="true"
-                  />
-                  Pendientes ({pendientes})
-                </span>
-                <span className="font-bold">{pctPendientes}%</span>
-              </div>
-              <div className="w-full bg-surface-container rounded-full h-2">
-                <div
-                  className="bg-error h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${pctPendientes}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Barra En Proceso */}
-            <div>
-              <div className="flex justify-between items-center text-body-md mb-1">
-                <span className="flex items-center gap-2">
-                  <span
-                    className="w-2 h-2 rounded-full bg-primary"
-                    aria-hidden="true"
-                  />
-                  En Proceso ({enProceso})
-                </span>
-                <span className="font-bold">{pctEnProceso}%</span>
-              </div>
-              <div className="w-full bg-surface-container rounded-full h-2">
-                <div
-                  className="bg-primary h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${pctEnProceso}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Barra Solucionados */}
-            <div>
-              <div className="flex justify-between items-center text-body-md mb-1">
-                <span className="flex items-center gap-2">
-                  <span
-                    className="w-2 h-2 rounded-full bg-tertiary"
-                    aria-hidden="true"
-                  />
-                  Solucionados ({solucionados})
-                </span>
-                <span className="font-bold">{pctSolucionados}%</span>
-              </div>
-              <div className="w-full bg-surface-container rounded-full h-2">
-                <div
-                  className="bg-tertiary h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${pctSolucionados}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        </article>
       </div>
     </main>
   );

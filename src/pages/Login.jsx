@@ -12,7 +12,7 @@ export default function Login() {
     e.preventDefault();
 
     if (correo === "admin@agora.cl" && contrasena === "admin123") {
-      navigate("/historial");
+      navigate("/dashboard");
     } else {
       alert("Credenciales incorrectas. Por favor, intente nuevamente.");
     }

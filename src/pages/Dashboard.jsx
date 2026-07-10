@@ -332,6 +332,16 @@ export default function Dashboard() {
     }
   }
 
+  // Cálculos para Distribución (Ahora suma 100%)
+  const totalTickets = tickets.length || 1;
+  const pendientes = tickets.filter((t) => t.estado === "pending").length;
+  const enProceso = tickets.filter((t) => t.estado === "in-progress").length;
+  const solucionados = tickets.filter((t) => t.estado === "solved").length;
+
+  const pctPendientes = Math.round((pendientes / totalTickets) * 100);
+  const pctEnProceso = Math.round((enProceso / totalTickets) * 100);
+  const pctSolucionados = Math.round((solucionados / totalTickets) * 100);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-surface">
@@ -357,8 +367,8 @@ export default function Dashboard() {
       </div>
 
       {/* Sección Filtros de Descarga */}
-      <div className="flex flex-col md:flex-row justify-between items-center mb">
-        <div className="flex w-fit items-center gap-2 p-2 ml-auto border border-outline-variant rounded-xl shadow-sm mb-2">
+      <div className="w-full flex justify-start mb-6">
+        <div className="flex flex-wrap items-center gap-3 p-2 bg-white border border-outline-variant rounded-xl shadow-sm">
           <p className="text-on-surface font-body-md">
             Descarga historial completo por periodo:
           </p>
@@ -411,41 +421,127 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Tarjetas de Métricas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-md mb-lg">
-        <MetricCard
-          icon="description"
-          iconBg="bg-surface-container-low"
-          iconColor="text-primary"
-          label="Tickets Totales"
-          value={metricas.totales.toString()}
-          meta="Historial activo"
-        />
-        <MetricCard
-          icon="pending_actions"
-          iconBg="bg-error-container"
-          iconColor="text-error"
-          label="Pendientes"
-          value={metricas.pendientes.toString()}
-          meta="Requieren atención"
-          metaColor="text-error"
-        />
-        <MetricCard
-          icon="sync"
-          iconBg="bg-surface-container-highest"
-          iconColor="text-primary-container"
-          label="En Proceso"
-          value={metricas.enProceso.toString()}
-          meta="Asignados a ejecutivos"
-        />
-        <MetricCard
-          icon="check_circle"
-          iconBg="bg-tertiary-fixed"
-          iconColor="text-tertiary"
-          label="Solucionados"
-          value={metricas.solucionados.toString()}
-          meta="Casos cerrados con éxito"
-        />
+      {/* CONTENEDOR PRINCIPAL: Divide la pantalla en 3 columnas en pantallas grandes */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch mt-6 mb-6">
+        {/* LADO IZQUIERDO: Tarjeta de Distribución Actual (ocupa 1 columna de 3) */}
+        <article
+          className="lg:col-span-1 bg-white p-6 rounded-2xl border border-outline-variant shadow-sm flex flex-col justify-between"
+          aria-labelledby="dist-title"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3
+              id="dist-title"
+              className="font-bold text-h3 text-on-surface text-lg"
+            >
+              Distribución Actual
+            </h3>
+            <span
+              className="material-symbols-outlined text-on-surface-variant"
+              aria-hidden="true"
+            >
+              pie_chart
+            </span>
+          </div>
+
+          <div className="space-y-10">
+            {/* Barra Pendientes */}
+            <div>
+              <div className="flex justify-between items-center text-body-md mb-1">
+                <span className="flex items-center gap-2">
+                  <span
+                    className="w-2 h-3 rounded-full bg-error"
+                    aria-hidden="true"
+                  />
+                  Pendientes ({pendientes})
+                </span>
+                <span className="font-bold">{pctPendientes}%</span>
+              </div>
+              <div className="w-full bg-surface-container rounded-full h-3">
+                <div
+                  className="bg-error h-3 rounded-full transition-all duration-500"
+                  style={{ width: `${pctPendientes}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Barra En Proceso */}
+            <div>
+              <div className="flex justify-between items-center text-body-md mb-1">
+                <span className="flex items-center gap-2">
+                  <span
+                    className="w-2 h-3 rounded-full bg-primary"
+                    aria-hidden="true"
+                  />
+                  En Proceso ({enProceso})
+                </span>
+                <span className="font-bold">{pctEnProceso}%</span>
+              </div>
+              <div className="w-full bg-surface-container rounded-full h-3">
+                <div
+                  className="bg-primary h-3 rounded-full transition-all duration-500"
+                  style={{ width: `${pctEnProceso}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Barra Solucionados */}
+            <div>
+              <div className="flex justify-between items-center text-body-md mb-1">
+                <span className="flex items-center gap-2">
+                  <span
+                    className="w-2 h-3 rounded-full bg-tertiary"
+                    aria-hidden="true"
+                  />
+                  Solucionados ({solucionados})
+                </span>
+                <span className="font-bold">{pctSolucionados}%</span>
+              </div>
+              <div className="w-full bg-surface-container rounded-full h-3">
+                <div
+                  className="bg-tertiary h-3 rounded-full transition-all duration-500"
+                  style={{ width: `${pctSolucionados}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </article>
+
+        {/* LADO DERECHO: Cuadrícula limpia de 2x2 para las 4 tarjetas (ocupa 2 columnas de 3) */}
+        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <MetricCard
+            icon="description"
+            iconBg="bg-surface-container-low"
+            iconColor="text-primary"
+            label="Tickets Totales"
+            value={metricas.totales.toString()}
+            meta="Historial activo"
+          />
+          <MetricCard
+            icon="pending_actions"
+            iconBg="bg-error-container"
+            iconColor="text-error"
+            label="Pendientes"
+            value={metricas.pendientes.toString()}
+            meta="Requieren atención"
+            metaColor="text-error"
+          />
+          <MetricCard
+            icon="sync"
+            iconBg="bg-surface-container-highest"
+            iconColor="text-primary-container"
+            label="En Proceso"
+            value={metricas.enProceso.toString()}
+            meta="Asignados a ejecutivos"
+          />
+          <MetricCard
+            icon="check_circle"
+            iconBg="bg-tertiary-fixed"
+            iconColor="text-tertiary"
+            label="Solucionados"
+            value={metricas.solucionados.toString()}
+            meta="Casos cerrados con éxito"
+          />
+        </div>
       </div>
 
       {/* Gráfico + Actividad */}
