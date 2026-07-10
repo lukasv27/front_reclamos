@@ -8,6 +8,8 @@ export default function HistorialGeneral() {
   const [tickets, setTickets] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
+  const [paginaActual, setPaginaActual] = useState(1);
+  const ticketsPorPagina = 10;
 
   useEffect(() => {
     const q = query(collection(db, "tickets"), orderBy("createdAt", "desc"));
@@ -39,6 +41,15 @@ export default function HistorialGeneral() {
 
     return matchesSearch && matchesStatus;
   });
+  const indiceUltimoTicket = paginaActual * ticketsPorPagina;
+  const indicePrimerTicket = indiceUltimoTicket - ticketsPorPagina;
+
+  const ticketsActuales = filteredTickets.slice(
+    indicePrimerTicket,
+    indiceUltimoTicket,
+  );
+
+  const totalPaginas = Math.ceil(filteredTickets.length / ticketsPorPagina);
 
   // Cálculos para Distribución (Ahora suma 100%)
   const totalTickets = tickets.length || 1;
@@ -82,6 +93,7 @@ export default function HistorialGeneral() {
       </div>
 
       {/* --- SECCIÓN PRINCIPAL: FILTROS Y TABLA --- */}
+
       <section className="bg-white rounded-xl border border-outline-variant overflow-hidden shadow-sm">
         <div className="p-md border-b border-outline-variant flex flex-col sm:flex-row gap-4 bg-surface-container-lowest justify-between items-center">
           <div className="relative w-full sm:w-96">
@@ -151,7 +163,7 @@ export default function HistorialGeneral() {
                   </td>
                 </tr>
               ) : (
-                filteredTickets.map((r) => (
+                ticketsActuales.map((r) => (
                   <tr
                     key={r.id}
                     className="hover:bg-surface-container-low transition-colors"
@@ -213,6 +225,21 @@ export default function HistorialGeneral() {
           </table>
         </div>
       </section>
+      <div className="flex justify-center mt-2 gap-1">
+        {Array.from({ length: totalPaginas }, (_, index) => (
+          <button
+            key={index}
+            onClick={() => setPaginaActual(index + 1)}
+            className={`px-3 py-2 rounded ${
+              paginaActual === index + 1
+                ? "bg-blue-600 text-white"
+                : "bg-gray-200 hover:bg-gray-300"
+            }`}
+          >
+            {index + 1}
+          </button>
+        ))}
+      </div>
 
       {/* --- SECCIÓN SECUNDARIA: INSIGHTS --- */}
       <div className="mt-xl grid grid-cols-1 md:grid-cols-3 gap-gutter">

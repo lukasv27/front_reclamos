@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
+import * as XLSX from "xlsx";
 import {
   collection,
   query,
@@ -7,12 +8,14 @@ import {
   onSnapshot,
   addDoc,
   serverTimestamp,
+  getDocs, // Añadido para consultar el historial completo
+  where, // Añadido para filtrar en la base de datos
 } from "firebase/firestore";
 import { db } from "../firebase"; // Ajusta la ruta si es necesario
-import MetricCard from "../components/MetricCard"; // Asumo que tienes este componente extraído
-import StatusBadge from "../components/StatusBadge"; // Asumo que tienes este componente extraído
+import MetricCard from "../components/MetricCard";
+import StatusBadge from "../components/StatusBadge";
 
-// NUEVOS DATOS DE PRUEBA ESTANDARIZADOS
+// DATOS DE PRUEBA ESTANDARIZADOS
 const MOCK_TICKETS = [
   {
     ticketId: "894582",
@@ -91,22 +94,36 @@ const MOCK_TICKETS = [
 export default function Dashboard() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [mesSeleccionado, setMesSeleccionado] = useState("todos");
+  const [anoSeleccionado, setAnoSeleccionado] = useState("todos");
+  const [procesoActual, setProcesoActual] = useState(1);
+  const [exporting, setExporting] = useState(false); // Estado para feedback visual al exportar
+  const procesoPorPagina = 10;
 
-  // Escuchar Firebase en tiempo real (AHORA APUNTA A 'tickets')
+  // Escuchar Firebase en tiempo real para el panel (Vista rápida)
   useEffect(() => {
     const q = query(collection(db, "tickets"), orderBy("createdAt", "desc"));
 
     const unsubscribe = onSnapshot(
       q,
-      (snapshot) => {
+      async (snapshot) => {
         if (snapshot.empty) {
-          // Poblado silencioso con los nuevos datos si la DB 'tickets' está vacía
-          MOCK_TICKETS.forEach(async (ticket) => {
-            await addDoc(collection(db, "tickets"), {
-              ...ticket,
-              createdAt: serverTimestamp(),
-            });
-          });
+          for (const ticket of MOCK_TICKETS) {
+            try {
+              // Convertimos el string mock a un objeto Date real para la simulación de historial con createdAt
+              const [fechaPart, horaPart] = ticket.fecha.split(" ");
+              const [dia, mes, ano] = fechaPart.split("/");
+              const [hora, min] = horaPart.split(":");
+              const fechaObjeto = new Date(ano, mes - 1, dia, hora, min);
+
+              await addDoc(collection(db, "tickets"), {
+                ...ticket,
+                createdAt: fechaObjeto, // Guardado como Date/Timestamp
+              });
+            } catch (err) {
+              console.error("Error al insertar mock ticket:", err);
+            }
+          }
         } else {
           const docs = snapshot.docs.map((doc) => ({
             id: doc.id,
@@ -125,58 +142,195 @@ export default function Dashboard() {
     return () => unsubscribe();
   }, []);
 
-  // Métricas globales
-  const totales = tickets.length;
-  const pendientes = tickets.filter((t) => t.estado === "pending").length;
-  const enProceso = tickets.filter((t) => t.estado === "in-progress").length;
-  const solucionados = tickets.filter((t) => t.estado === "solved").length;
+  // Métricas de la Dashboard
+  const metricas = useMemo(() => {
+    const totales = tickets.length;
+    let pendientes = 0;
+    let enProceso = 0;
+    let solucionados = 0;
 
-  // Contador por las nuevas categorías para el gráfico
-  const categoriasContador = {
-    "Falla Técnica": tickets.filter((t) => t.categoria === "Falla Técnica")
-      .length,
-    Facturación: tickets.filter((t) => t.categoria === "Facturación").length,
-    "Demora en Entrega": tickets.filter(
-      (t) => t.categoria === "Demora en Entrega",
-    ).length,
-    "Atención al Cliente": tickets.filter(
-      (t) => t.categoria === "Atención al Cliente",
-    ).length,
-  };
+    const categoriasContador = {
+      "Falla Técnica": 0,
+      Facturación: 0,
+      "Demora en Entrega": 0,
+      "Atención al Cliente": 0,
+    };
 
-  const maxIncidencias = Math.max(...Object.values(categoriasContador), 1);
+    tickets.forEach((t) => {
+      if (t.estado === "pending") pendientes++;
+      else if (t.estado === "in-progress") enProceso++;
+      else if (t.estado === "solved") solucionados++;
 
-  // Mapeo de datos para las barras con los nuevos nombres
+      if (categoriasContador[t.categoria] !== undefined) {
+        categoriasContador[t.categoria]++;
+      }
+    });
+
+    const maxIncidencias = Math.max(...Object.values(categoriasContador), 1);
+    const mayorCategoria = Object.keys(categoriasContador).reduce(
+      (a, b) => (categoriasContador[a] > categoriasContador[b] ? a : b),
+      "Ninguna",
+    );
+
+    return {
+      totales,
+      pendientes,
+      enProceso,
+      solucionados,
+      categoriasContador,
+      maxIncidencias,
+      mayorCategoria,
+    };
+  }, [tickets]);
+
+  const actividadReciente = useMemo(() => tickets.slice(0, 4), [tickets]);
+  const ticketsEnProceso = useMemo(
+    () => tickets.filter((t) => t.estado === "in-progress"),
+    [tickets],
+  );
+
+  // Paginación de la tabla visual
+  const indiceUltimoProceso = procesoActual * procesoPorPagina;
+  const indicePrimerProceso = indiceUltimoProceso - procesoPorPagina;
+  const procesoActuales = ticketsEnProceso.slice(
+    indicePrimerProceso,
+    indiceUltimoProceso,
+  );
+  const totalProceso = Math.ceil(ticketsEnProceso.length / procesoPorPagina);
+
+  useEffect(() => {
+    setProcesoActual(1);
+  }, [ticketsEnProceso]);
+
   const barsData = [
     {
       label: "Falla Técnica",
-      count: categoriasContador["Falla Técnica"],
+      count: metricas.categoriasContador["Falla Técnica"],
       opacity: "",
     },
     {
       label: "Facturación",
-      count: categoriasContador["Facturación"],
+      count: metricas.categoriasContador["Facturación"],
       opacity: "opacity-80",
     },
     {
       label: "Demora en Entrega",
-      count: categoriasContador["Demora en Entrega"],
+      count: metricas.categoriasContador["Demora en Entrega"],
       opacity: "opacity-60",
     },
     {
       label: "Atención al Cliente",
-      count: categoriasContador["Atención al Cliente"],
+      count: metricas.categoriasContador["Atención al Cliente"],
       opacity: "opacity-40",
     },
   ];
 
-  const mayorCategoria = Object.keys(categoriasContador).reduce(
-    (a, b) => (categoriasContador[a] > categoriasContador[b] ? a : b),
-    "Ninguna",
-  );
+  // FUNCIÓN CRUCIAL: Consulta e integra todo el historial desde Firestore
+  async function exportarExcel() {
+    try {
+      setExporting(true);
+      let qHistorial = query(
+        collection(db, "tickets"),
+        orderBy("createdAt", "desc"),
+      );
 
-  const actividadReciente = tickets.slice(0, 4);
-  const ticketsEnProceso = tickets.filter((t) => t.estado === "in-progress");
+      // Si se selecciona un año específico, podemos optimizar la consulta por rangos de fechas (Timestamps)
+      if (anoSeleccionado !== "todos") {
+        const ano = parseInt(anoSeleccionado);
+        let fechaInicio, fechaFin;
+
+        if (mesSeleccionado !== "todos") {
+          const mes = parseInt(mesSeleccionado);
+          fechaInicio = new Date(ano, mes - 1, 1);
+          fechaFin = new Date(ano, mes, 0, 23, 59, 59); // Último día del mes elegido
+        } else {
+          fechaInicio = new Date(ano, 0, 1);
+          fechaFin = new Date(ano, 11, 31, 23, 59, 59); // Todo el año entero
+        }
+
+        qHistorial = query(
+          collection(db, "tickets"),
+          where("createdAt", ">=", fechaInicio),
+          where("createdAt", "<=", fechaFin),
+          orderBy("createdAt", "desc"),
+        );
+      }
+
+      // Traer los datos directamente del historial de Firestore (no del estado local)
+      const querySnapshot = await getDocs(qHistorial);
+
+      if (querySnapshot.empty) {
+        alert(
+          "No se encontraron tickets en el historial para el período seleccionado.",
+        );
+        setExporting(false);
+        return;
+      }
+
+      // Procesar y mapear los documentos del historial
+      const historialTickets = querySnapshot.docs.map((doc) => {
+        const data = doc.data();
+        // Formatear la fecha si viene como Timestamp de Firebase
+        let fechaFormateada = data.fecha;
+        if (data.createdAt && typeof data.createdAt.toDate === "function") {
+          fechaFormateada = data.createdAt.toDate().toLocaleString("es-CL");
+        }
+        return { ...data, id: doc.id, fecha: fechaFormateada };
+      });
+
+      // Filtro de contingencia por JS en caso de que hayan seleccionado un mes pero "Todos los años"
+      const ticketsFiltrados = historialTickets.filter((ticket) => {
+        if (anoSeleccionado === "todos" && mesSeleccionado !== "todos") {
+          if (!ticket.fecha || !ticket.fecha.includes("/")) return false;
+          const partesFecha = ticket.fecha.split(" ")[0].split("/");
+          const mesTicket = partesFecha[1]; // Posición del mes
+          return mesTicket === mesSeleccionado;
+        }
+        return true;
+      });
+
+      if (ticketsFiltrados.length === 0) {
+        alert("No se encontraron tickets para el periodo seleccionado.");
+        setExporting(false);
+        return;
+      }
+
+      // Formatear columnas del Excel
+      const datosExcel = ticketsFiltrados.map((ticket) => ({
+        "ID Ticket": ticket.ticketId || ticket.id.slice(0, 6),
+        Cliente: ticket.clienteNombre,
+        RUT: ticket.clienteRut,
+        Teléfono: ticket.clienteTelefono,
+        Categoría: ticket.categoria,
+        Prioridad: ticket.prioridad,
+        Estado:
+          ticket.estado === "pending"
+            ? "Pendiente"
+            : ticket.estado === "in-progress"
+              ? "En Proceso"
+              : "Solucionado",
+        Descripción: ticket.descripcion,
+        Fecha: ticket.fecha,
+      }));
+
+      // Generar y descargar el Excel
+      const hoja = XLSX.utils.json_to_sheet(datosExcel);
+      const libro = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(libro, hoja, "Historial_Tickets");
+
+      const sufijoMes =
+        mesSeleccionado === "todos" ? "TodosMeses" : `Mes_${mesSeleccionado}`;
+      const sufijoAno =
+        anoSeleccionado === "todos" ? "TodosAnos" : `Ano_${anoSeleccionado}`;
+
+      XLSX.writeFile(libro, `Historial_Tickets_${sufijoMes}_${sufijoAno}.xlsx`);
+    } catch (error) {
+      console.error("Error al exportar historial:", error);
+      alert("Ocurrió un error al consultar el historial.");
+    } finally {
+      setExporting(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -202,6 +356,61 @@ export default function Dashboard() {
         </p>
       </div>
 
+      {/* Sección Filtros de Descarga */}
+      <div className="flex flex-col md:flex-row justify-between items-center mb">
+        <div className="flex w-fit items-center gap-2 p-2 ml-auto border border-outline-variant rounded-xl shadow-sm mb-2">
+          <p className="text-on-surface font-body-md">
+            Descarga historial completo por periodo:
+          </p>
+
+          <select
+            value={mesSeleccionado}
+            onChange={(e) => setMesSeleccionado(e.target.value)}
+            className="bg-surface-container-low text-on-surface border border-outline-variant px-3 py-2 rounded-lg font-body-md focus:outline-none focus:border-primary"
+          >
+            <option value="todos">todos</option>
+            <option value="01">Enero</option>
+            <option value="02">Febrero</option>
+            <option value="03">Marzo</option>
+            <option value="04">Abril</option>
+            <option value="05">Mayo</option>
+            <option value="06">Junio</option>
+            <option value="07">Julio</option>
+            <option value="08">Agosto</option>
+            <option value="09">Septiembre</option>
+            <option value="10">Octubre</option>
+            <option value="11">Noviembre</option>
+            <option value="12">Diciembre</option>
+          </select>
+
+          <select
+            value={anoSeleccionado}
+            onChange={(e) => setAnoSeleccionado(e.target.value)}
+            className="bg-surface-container-low text-on-surface border border-outline-variant px-3 py-2 rounded-lg font-body-md focus:outline-none focus:border-primary"
+          >
+            <option value="todos">Todos los años</option>
+            <option value="2026">2026</option>
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+          </select>
+
+          {/* Botón de exportar con estado de carga */}
+          <button
+            onClick={exportarExcel}
+            disabled={exporting}
+            className={`flex items-center gap-2 text-white px-4 py-2 rounded-lg transition ${
+              exporting
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-green-600 hover:bg-green-700"
+            }`}
+          >
+            <span className="material-symbols-outlined font-bold">
+              {exporting ? "hourglass_empty" : "download"}
+            </span>
+          </button>
+        </div>
+      </div>
+
       {/* Tarjetas de Métricas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-md mb-lg">
         <MetricCard
@@ -209,7 +418,7 @@ export default function Dashboard() {
           iconBg="bg-surface-container-low"
           iconColor="text-primary"
           label="Tickets Totales"
-          value={totales.toString()}
+          value={metricas.totales.toString()}
           meta="Historial activo"
         />
         <MetricCard
@@ -217,7 +426,7 @@ export default function Dashboard() {
           iconBg="bg-error-container"
           iconColor="text-error"
           label="Pendientes"
-          value={pendientes.toString()}
+          value={metricas.pendientes.toString()}
           meta="Requieren atención"
           metaColor="text-error"
         />
@@ -226,7 +435,7 @@ export default function Dashboard() {
           iconBg="bg-surface-container-highest"
           iconColor="text-primary-container"
           label="En Proceso"
-          value={enProceso.toString()}
+          value={metricas.enProceso.toString()}
           meta="Asignados a ejecutivos"
         />
         <MetricCard
@@ -234,14 +443,13 @@ export default function Dashboard() {
           iconBg="bg-tertiary-fixed"
           iconColor="text-tertiary"
           label="Solucionados"
-          value={solucionados.toString()}
+          value={metricas.solucionados.toString()}
           meta="Casos cerrados con éxito"
         />
       </div>
 
       {/* Gráfico + Actividad */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-lg">
-        {/* Gráfico de Barras Corregido */}
         <section
           className="lg:col-span-2 card rounded-lg flex flex-col justify-between"
           aria-labelledby="chart-title"
@@ -255,30 +463,29 @@ export default function Dashboard() {
             </span>
           </div>
 
-          {/* Contenedor del Gráfico */}
           <div
             className="h-64 flex items-end gap-md px-md pb-sm border-b border-outline-variant"
             role="img"
-            aria-label="Gráfico de barras de tickets por categoría"
+            aria-label="Gráfico de barras"
           >
             {barsData.map((bar) => {
-              const alturaPorcentaje = (bar.count / maxIncidencias) * 100;
+              const alturaPorcentaje =
+                (bar.count / metricas.maxIncidencias) * 100;
               const heightStyle =
                 bar.count > 0 ? `${Math.max(alturaPorcentaje, 15)}%` : "0%";
-
               return (
                 <div
                   key={bar.label}
                   className="flex-1 h-full flex flex-col justify-end items-center gap-xs group"
                 >
-                  <span className="font-label-sm text-primary font-bold transition-all duration-200 opacity-100 transform translate-y-0 group-hover:-translate-y-1">
+                  <span className="font-label-sm text-primary font-bold group-hover:-translate-y-1 transition-all">
                     {bar.count}
                   </span>
                   <div
-                    className={`w-full max-w-[44px] bg-[#4A83C3] ${bar.opacity} rounded-t-md transition-all duration-500 shadow-sm group-hover:scale-x-105 group-hover:opacity-100`}
+                    className={`w-full max-w-[44px] bg-[#4A83C3] ${bar.opacity} rounded-t-md transition-all shadow-sm group-hover:scale-x-105`}
                     style={{ height: heightStyle }}
                   />
-                  <span className="font-label-sm text-label-sm text-on-surface-variant text-center truncate w-full mt-xs">
+                  <span className="font-label-sm text-on-surface-variant text-center truncate w-full mt-xs">
                     {bar.label}
                   </span>
                 </div>
@@ -288,26 +495,26 @@ export default function Dashboard() {
 
           <div className="mt-lg grid grid-cols-3 gap-md">
             <div>
-              <p className="font-label-sm text-label-sm text-on-secondary-container">
+              <p className="font-label-sm text-on-secondary-container">
                 Mayor Incidencia
               </p>
-              <p className="font-body-lg text-body-lg font-semibold text-primary">
-                {mayorCategoria}
+              <p className="font-body-lg font-semibold text-primary">
+                {metricas.mayorCategoria}
               </p>
             </div>
             <div>
-              <p className="font-label-sm text-label-sm text-on-secondary-container">
+              <p className="font-label-sm text-on-secondary-container">
                 Canal de Datos
               </p>
-              <p className="font-body-lg text-body-lg font-semibold text-on-surface">
+              <p className="font-body-lg font-semibold text-on-surface">
                 Firestore DB
               </p>
             </div>
             <div>
-              <p className="font-label-sm text-label-sm text-on-secondary-container">
+              <p className="font-label-sm text-on-secondary-container">
                 Estado de Red
               </p>
-              <p className="font-body-lg text-body-lg font-semibold text-green-600 flex items-center gap-xs">
+              <p className="font-body-lg font-semibold text-green-600 flex items-center gap-xs">
                 <span className="w-2 h-2 rounded-full bg-green-600 inline-block animate-pulse" />{" "}
                 Online
               </p>
@@ -315,7 +522,7 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* Actividad reciente - ACTUALIZADA A LA NUEVA ESTRUCTURA */}
+        {/* Actividad reciente */}
         <section
           className="card rounded-lg flex flex-col"
           aria-labelledby="activity-title"
@@ -331,16 +538,13 @@ export default function Dashboard() {
               <li key={t.id || index} className="relative">
                 <Link
                   to={`/clientes/${t.clienteRut}`}
-                  className="flex gap-md p-sm rounded-md transition-all duration-200 hover:bg-surface-container-low group block"
+                  className="flex gap-md p-sm rounded-md hover:bg-surface-container-low group block"
                 >
                   <div className="flex flex-col items-center flex-shrink-0">
                     <div
                       className={`w-8 h-8 rounded-full flex items-center justify-center z-10 transition-transform group-hover:scale-105 ${t.estado === "pending" ? "bg-error-container text-error" : t.estado === "in-progress" ? "bg-surface-container-highest text-primary-container" : "bg-tertiary-fixed text-tertiary"}`}
                     >
-                      <span
-                        className="material-symbols-outlined text-[18px]"
-                        aria-hidden="true"
-                      >
+                      <span className="material-symbols-outlined text-[18px]">
                         {t.estado === "pending"
                           ? "report"
                           : t.estado === "in-progress"
@@ -352,12 +556,11 @@ export default function Dashboard() {
                       <div className="w-0.5 h-12 bg-outline-variant mt-1" />
                     )}
                   </div>
-
                   <div className="flex-grow min-w-0">
-                    <p className="font-body-md text-body-md font-medium text-on-surface group-hover:text-primary transition-colors">
+                    <p className="font-body-md font-medium text-on-surface group-hover:text-primary transition-colors">
                       Ticket #{t.ticketId || t.id.slice(0, 4)}
                     </p>
-                    <p className="font-label-sm text-label-sm text-on-surface-variant truncate pr-xs">
+                    <p className="font-label-sm text-on-surface-variant truncate pr-xs">
                       <span className="font-semibold">{t.clienteNombre}</span> —{" "}
                       {t.descripcion}
                     </p>
@@ -383,15 +586,11 @@ export default function Dashboard() {
         className="mt-lg card rounded-lg overflow-hidden p-0"
         aria-labelledby="tickets-table-title"
       >
-        <div className="p-lg border-b border-outline-variant flex justify-between items-center">
-          <h3
-            id="tickets-table-title"
-            className="font-h3 text-h3 text-on-surface"
-          >
+        <div className="p-lg border-b border-outline-variant">
+          <h3 id="tickets-table-title" className="font-h3 text-on-surface">
             Tickets en Proceso
           </h3>
         </div>
-
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-surface-container-low">
@@ -414,7 +613,7 @@ export default function Dashboard() {
                   </td>
                 </tr>
               ) : (
-                ticketsEnProceso.map((t) => (
+                procesoActuales.map((t) => (
                   <tr
                     key={t.id}
                     className="hover:bg-surface-container-low transition-colors"
@@ -422,16 +621,13 @@ export default function Dashboard() {
                     <td className="table-td font-medium text-primary">
                       <Link
                         to={`/clientes/${t.clienteRut}`}
-                        className="hover:underline cursor-pointer"
+                        className="hover:underline"
                       >
                         #{t.ticketId}
                       </Link>
                     </td>
                     <td className="table-td font-medium text-on-surface">
-                      <Link
-                        to={`/gestion/${t.id}`}
-                        className="hover:underline cursor-pointer"
-                      >
+                      <Link to={`/gestion/${t.id}`} className="hover:underline">
                         {t.clienteNombre}
                       </Link>
                     </td>
@@ -452,7 +648,6 @@ export default function Dashboard() {
                       <div className="flex items-center gap-xs capitalize">
                         <span
                           className={`w-2 h-2 rounded-full ${t.estado === "pending" ? "bg-error" : t.estado === "in-progress" ? "bg-primary" : "bg-tertiary"}`}
-                          aria-hidden="true"
                         />
                         {t.estado === "pending" && "Pendiente"}
                         {t.estado === "in-progress" && "En Proceso"}
@@ -470,21 +665,30 @@ export default function Dashboard() {
         </div>
       </section>
 
+      {/* Paginación */}
+      <div className="flex justify-center mt-4 gap-1">
+        {Array.from({ length: totalProceso }, (_, index) => (
+          <button
+            key={index}
+            onClick={() => setProcesoActual(index + 1)}
+            className={`px-3 py-2 rounded font-body-md transition-colors ${procesoActual === index + 1 ? "bg-blue-600 text-white" : "bg-gray-200 hover:bg-gray-300 text-on-surface"}`}
+          >
+            {index + 1}
+          </button>
+        ))}
+      </div>
+
       {/* FAB */}
-      <div className="fixed bottom-margin right-margin z-50">
+      <div className="fixed bottom-8 right-8 z-50">
         <Link
           to="/nuevo-reclamo"
           className="group relative bg-primary text-on-primary w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:bg-primary-container transition-all"
           aria-label="Crear nuevo ticket"
-          title="Crear nuevo ticket"
         >
-          <span className="absolute right-16 top-1/2 -translate-y-1/2 bg-surface-container-highest text-on-surface border border-outline-variant px-md py-xs rounded-md font-label-sm text-label-sm whitespace-nowrap shadow-md opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 transition-all duration-200">
+          <span className="absolute right-16 top-1/2 -translate-y-1/2 bg-surface-container-highest text-on-surface border border-outline-variant px-md py-xs rounded-md font-label-sm whitespace-nowrap shadow-md opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all">
             Crear nuevo ticket
           </span>
-          <span
-            className="material-symbols-outlined transition-transform duration-300 group-hover:rotate-90"
-            aria-hidden="true"
-          >
+          <span className="material-symbols-outlined transition-transform duration-300 group-hover:rotate-90">
             add
           </span>
         </Link>
