@@ -1,8 +1,58 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { collection, addDoc } from "firebase/firestore";
-import { db } from "../firebase"; // Asegúrate de que la ruta a tu config de firebase sea correcta
+import { collection, addDoc, serverTimestamp } from "firebase/firestore"; // Añadido serverTimestamp para un ordenamiento óptimo
+import { db } from "../firebase";
 
+// ==========================================
+// FUNCIONES AUXILIARES PARA EL RUT CHILENO
+// ==========================================
+
+// Formatea el texto plano a: XX.XXX.XXX-X
+function formatearRut(rut) {
+  let valor = rut.replace(/[^0-9kK]/g, "");
+  if (valor.length <= 1) return valor;
+
+  let cuerpo = valor.slice(0, -1);
+  let dv = valor.slice(-1).toUpperCase();
+
+  let cuerpoFormateado = "";
+  while (cuerpo.length > 3) {
+    cuerpoFormateado = "." + cuerpo.slice(-3) + cuerpoFormateado;
+    cuerpo = cuerpo.slice(0, -3);
+  }
+  cuerpoFormateado = cuerpo + cuerpoFormateado;
+
+  return `${cuerpoFormateado}-${dv}`;
+}
+
+// Valida usando el algoritmo Módulo 11
+function validarRutChileno(rutCompleto) {
+  if (!rutCompleto || rutCompleto.length < 3) return false;
+
+  const limpio = rutCompleto.replace(/[^0-9kK]/g, "");
+  if (limpio.length < 8) return false;
+
+  const cuerpo = limpio.slice(0, -1);
+  const dv = limpio.slice(-1).toUpperCase();
+
+  let suma = 0;
+  let multiplo = 2;
+
+  for (let i = cuerpo.length - 1; i >= 0; i--) {
+    suma += multiplo * parseInt(cuerpo.charAt(i), 10);
+    multiplo = multiplo < 7 ? multiplo + 1 : 2;
+  }
+
+  const dvEsperado = 11 - (suma % 11);
+  let dvFinal =
+    dvEsperado === 11 ? "0" : dvEsperado === 10 ? "K" : String(dvEsperado);
+
+  return dv === dvFinal;
+}
+
+// ==========================================
+// COMPONENTE PRINCIPAL
+// ==========================================
 export default function NuevoReclamo() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -10,11 +60,12 @@ export default function NuevoReclamo() {
   // Estados del Formulario (Campos del Cliente)
   const [clienteNombre, setClienteNombre] = useState("");
   const [clienteRut, setClienteRut] = useState("");
+  const [rutError, setRutError] = useState(""); // <-- Estado para capturar errores del RUT
   const [clienteTelefono, setClienteTelefono] = useState("");
 
   // Estados del Formulario (Campos del Ticket)
   const [categoria, setCategoria] = useState("");
-  const [prioridad, setPrioridad] = useState("Media"); // 'Media' por defecto como tenías antes
+  const [prioridad, setPrioridad] = useState("Media");
   const [descripcion, setDescripcion] = useState("");
   const [cargando, setCargando] = useState(false);
 
@@ -24,16 +75,41 @@ export default function NuevoReclamo() {
       const { clienteNombre, clienteRut, clienteTelefono } = location.state;
 
       if (clienteNombre) setClienteNombre(clienteNombre);
-      if (clienteRut) setClienteRut(clienteRut);
+      if (clienteRut) {
+        // Asegura que si viene de otra pantalla, se formatee de entrada
+        setClienteRut(formatearRut(clienteRut));
+      }
       if (clienteTelefono) setClienteTelefono(clienteTelefono);
     }
   }, [location.state]);
+
+  // Manejadores específicos para el comportamiento del Input de RUT
+  const handleRutChange = (e) => {
+    const rutFormateado = formatearRut(e.target.value);
+    setClienteRut(rutFormateado);
+    if (e.target.value === "") setRutError("");
+  };
+
+  const handleRutBlur = () => {
+    if (clienteRut === "") return;
+    const esValido = validarRutChileno(clienteRut);
+    if (!esValido) {
+      setRutError("El RUT ingresado no es válido.");
+    } else {
+      setRutError("");
+    }
+  };
 
   // Manejador del envío a Firebase
   async function handleSubmit(e) {
     e.preventDefault();
 
-    // Validación básica
+    // Verificación final del RUT antes de guardar
+    if (!validarRutChileno(clienteRut)) {
+      setRutError("Por favor, ingrese un RUT válido antes de continuar.");
+      return;
+    }
+
     if (!clienteNombre || !clienteRut || !categoria || !descripcion) {
       alert("Por favor, complete todos los campos obligatorios (*).");
       return;
@@ -42,16 +118,13 @@ export default function NuevoReclamo() {
     setCargando(true);
 
     try {
-      // Generamos el ID aleatorio de 6 dígitos único para el ticket
       const generadoTicketId = Math.floor(
         100000 + Math.random() * 900000,
       ).toString();
 
-      // Fecha actual del sistema en formato local legible (ej: "11/06/2026 12:51")
       const fechaActual = new Date();
       const fechaFormateada = `${fechaActual.toLocaleDateString()} ${fechaActual.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 
-      // Objeto estructurado según los parámetros exactos del Dashboard
       const nuevoTicket = {
         ticketId: generadoTicketId,
         clienteNombre: clienteNombre.trim(),
@@ -59,17 +132,16 @@ export default function NuevoReclamo() {
         clienteTelefono: clienteTelefono.trim(),
         categoria,
         prioridad,
-        estado: "pending", // "pending" por defecto al crearse como solicitaste
+        estado: "pending",
         descripcion: descripcion.trim(),
         fecha: fechaFormateada,
-        createdAt: fechaActual.toISOString(), // Respaldo técnico de fecha para ordenar en Firebase
+        createdAt: serverTimestamp(), // Reemplazado por serverTimestamp() nativo para corregir el orden en tu Dashboard
       };
 
-      // Guardado en la colección unificada de Firestore
       await addDoc(collection(db, "tickets"), nuevoTicket);
 
       alert(`¡Ticket #${generadoTicketId} creado exitosamente!`);
-      navigate("/dashboard"); // Te devuelve al dashboard para ver tu nuevo ticket en la actividad reciente
+      navigate("/dashboard");
     } catch (error) {
       console.error("Error al guardar el ticket en Firebase:", error);
       alert("Hubo un error al conectar con el servidor. Intente nuevamente.");
@@ -135,7 +207,7 @@ export default function NuevoReclamo() {
                   />
                 </div>
 
-                {/* RUT */}
+                {/* RUT (MODIFICADO CON VALIDACIONES) */}
                 <div className="space-y-xs">
                   <label
                     htmlFor="client-rut"
@@ -147,11 +219,22 @@ export default function NuevoReclamo() {
                     type="text"
                     id="client-rut"
                     required
+                    maxLength={12} // Evita desbordamientos de caracteres
                     value={clienteRut}
-                    onChange={(e) => setClienteRut(e.target.value)}
+                    onChange={handleRutChange}
+                    onBlur={handleRutBlur}
                     placeholder="Ej: 12.345.678-9"
-                    className="input-field rounded-lg"
+                    className={`input-field rounded-lg w-full ${
+                      rutError
+                        ? "border-error focus:border-error ring-1 ring-error"
+                        : ""
+                    }`}
                   />
+                  {rutError && (
+                    <p className="text-error text-xs font-medium mt-1">
+                      {rutError}
+                    </p>
+                  )}
                 </div>
 
                 {/* Teléfono */}
@@ -294,7 +377,7 @@ export default function NuevoReclamo() {
               </Link>
               <button
                 type="submit"
-                disabled={cargando}
+                disabled={cargando || !!rutError} // Deshabilita el botón si está cargando o si hay error en el RUT
                 className="btn btn--primary rounded-full px-8 h-12 font-semibold shadow-sm hover:shadow-lg transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {cargando ? "Guardando..." : "Crear Ticket"}
@@ -303,7 +386,7 @@ export default function NuevoReclamo() {
           </form>
         </div>
 
-        {/* Info contextual estandarizada */}
+        {/* Info contextual */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-surface-container rounded-xl p-md flex items-start gap-4">
             <div className="bg-white p-2 rounded-lg text-primary flex-shrink-0 shadow-sm">
