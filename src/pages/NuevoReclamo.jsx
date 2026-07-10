@@ -1,13 +1,20 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore"; // Añadido serverTimestamp para un ordenamiento óptimo
+// Añadimos 'query', 'where', 'getDocs' y 'limit' para buscar el cliente
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  query,
+  where,
+  getDocs,
+  limit,
+} from "firebase/firestore";
 import { db } from "../firebase";
 
 // ==========================================
 // FUNCIONES AUXILIARES PARA EL RUT CHILENO
 // ==========================================
-
-// Formatea el texto plano a: XX.XXX.XXX-X
 function formatearRut(rut) {
   let valor = rut.replace(/[^0-9kK]/g, "");
   if (valor.length <= 1) return valor;
@@ -25,7 +32,6 @@ function formatearRut(rut) {
   return `${cuerpoFormateado}-${dv}`;
 }
 
-// Valida usando el algoritmo Módulo 11
 function validarRutChileno(rutCompleto) {
   if (!rutCompleto || rutCompleto.length < 3) return false;
 
@@ -60,8 +66,11 @@ export default function NuevoReclamo() {
   // Estados del Formulario (Campos del Cliente)
   const [clienteNombre, setClienteNombre] = useState("");
   const [clienteRut, setClienteRut] = useState("");
-  const [rutError, setRutError] = useState(""); // <-- Estado para capturar errores del RUT
+  const [rutError, setRutError] = useState("");
   const [clienteTelefono, setClienteTelefono] = useState("");
+
+  // Estado para mostrar un indicador visual cuando busca el RUT
+  const [buscandoRut, setBuscandoRut] = useState(false);
 
   // Estados del Formulario (Campos del Ticket)
   const [categoria, setCategoria] = useState("");
@@ -75,36 +84,65 @@ export default function NuevoReclamo() {
       const { clienteNombre, clienteRut, clienteTelefono } = location.state;
 
       if (clienteNombre) setClienteNombre(clienteNombre);
-      if (clienteRut) {
-        // Asegura que si viene de otra pantalla, se formatee de entrada
-        setClienteRut(formatearRut(clienteRut));
-      }
+      if (clienteRut) setClienteRut(formatearRut(clienteRut));
       if (clienteTelefono) setClienteTelefono(clienteTelefono);
     }
   }, [location.state]);
 
-  // Manejadores específicos para el comportamiento del Input de RUT
   const handleRutChange = (e) => {
     const rutFormateado = formatearRut(e.target.value);
     setClienteRut(rutFormateado);
-    if (e.target.value === "") setRutError("");
-  };
-
-  const handleRutBlur = () => {
-    if (clienteRut === "") return;
-    const esValido = validarRutChileno(clienteRut);
-    if (!esValido) {
-      setRutError("El RUT ingresado no es válido.");
-    } else {
+    if (e.target.value === "") {
       setRutError("");
+      setClienteNombre("");
+      setClienteTelefono("");
     }
   };
 
-  // Manejador del envío a Firebase
+  // FUNCIÓN CLAVE: Al salir del input, valida y busca en Firestore
+  const handleRutBlur = async () => {
+    if (clienteRut === "") return;
+
+    // 1. Validar Algoritmo del RUT
+    const esValido = validarRutChileno(clienteRut);
+    if (!esValido) {
+      setRutError("El RUT ingresado no es válido.");
+      return;
+    }
+
+    setRutError("");
+    setBuscandoRut(true);
+
+    try {
+      // 2. Consultar en Firestore si ya existe algún ticket con este RUT
+      const q = query(
+        collection(db, "tickets"),
+        where("clienteRut", "==", clienteRut.trim().toUpperCase()),
+        limit(1), // Solo necesitamos el registro más reciente para obtener sus datos básicos
+      );
+
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        // El cliente ya existe, extraemos sus datos del primer documento encontrado
+        const datosClienteExistente = querySnapshot.docs[0].data();
+
+        setClienteNombre(datosClienteExistente.clienteNombre);
+        setClienteTelefono(datosClienteExistente.clienteTelefono || "");
+
+        // Opcional: una alerta sutil o un estado visual indicando que se cargaron los datos
+        console.log("Cliente encontrado. Campos auto-rellenados.");
+      }
+    } catch (error) {
+      console.error("Error al buscar el RUT del cliente:", error);
+    } finally {
+      setBuscandoRut(false);
+    }
+  };
+
   async function handleSubmit(e) {
     e.preventDefault();
 
-    // Verificación final del RUT antes de guardar
     if (!validarRutChileno(clienteRut)) {
       setRutError("Por favor, ingrese un RUT válido antes de continuar.");
       return;
@@ -135,7 +173,7 @@ export default function NuevoReclamo() {
         estado: "pending",
         descripcion: descripcion.trim(),
         fecha: fechaFormateada,
-        createdAt: serverTimestamp(), // Reemplazado por serverTimestamp() nativo para corregir el orden en tu Dashboard
+        createdAt: serverTimestamp(),
       };
 
       await addDoc(collection(db, "tickets"), nuevoTicket);
@@ -188,6 +226,43 @@ export default function NuevoReclamo() {
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-md">
+                {/* RUT (Se movió arriba para que sea lo primero que se llene) */}
+                <div className="space-y-xs">
+                  <label
+                    htmlFor="client-rut"
+                    className="block font-label-sm text-label-sm text-on-surface"
+                  >
+                    RUT del Cliente *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      id="client-rut"
+                      required
+                      maxLength={12}
+                      value={clienteRut}
+                      onChange={handleRutChange}
+                      onBlur={handleRutBlur}
+                      placeholder="Ej: 12.345.678-9"
+                      className={`input-field rounded-lg w-full ${
+                        rutError
+                          ? "border-error focus:border-error ring-1 ring-error"
+                          : ""
+                      }`}
+                    />
+                    {buscandoRut && (
+                      <span className="absolute right-3 top-3 text-xs text-on-surface-variant animate-pulse">
+                        Buscando...
+                      </span>
+                    )}
+                  </div>
+                  {rutError && (
+                    <p className="text-error text-xs font-medium mt-1">
+                      {rutError}
+                    </p>
+                  )}
+                </div>
+
                 {/* Nombre */}
                 <div className="space-y-xs">
                   <label
@@ -205,36 +280,6 @@ export default function NuevoReclamo() {
                     placeholder="Ej: Juan Pérez Oyarzún"
                     className="input-field rounded-lg"
                   />
-                </div>
-
-                {/* RUT (MODIFICADO CON VALIDACIONES) */}
-                <div className="space-y-xs">
-                  <label
-                    htmlFor="client-rut"
-                    className="block font-label-sm text-label-sm text-on-surface"
-                  >
-                    RUT del Cliente *
-                  </label>
-                  <input
-                    type="text"
-                    id="client-rut"
-                    required
-                    maxLength={12} // Evita desbordamientos de caracteres
-                    value={clienteRut}
-                    onChange={handleRutChange}
-                    onBlur={handleRutBlur}
-                    placeholder="Ej: 12.345.678-9"
-                    className={`input-field rounded-lg w-full ${
-                      rutError
-                        ? "border-error focus:border-error ring-1 ring-error"
-                        : ""
-                    }`}
-                  />
-                  {rutError && (
-                    <p className="text-error text-xs font-medium mt-1">
-                      {rutError}
-                    </p>
-                  )}
                 </div>
 
                 {/* Teléfono */}
@@ -377,49 +422,13 @@ export default function NuevoReclamo() {
               </Link>
               <button
                 type="submit"
-                disabled={cargando || !!rutError} // Deshabilita el botón si está cargando o si hay error en el RUT
+                disabled={cargando || !!rutError || buscandoRut}
                 className="btn btn--primary rounded-full px-8 h-12 font-semibold shadow-sm hover:shadow-lg transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {cargando ? "Guardando..." : "Crear Ticket"}
               </button>
             </div>
           </form>
-        </div>
-
-        {/* Info contextual */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-surface-container rounded-xl p-md flex items-start gap-4">
-            <div className="bg-white p-2 rounded-lg text-primary flex-shrink-0 shadow-sm">
-              <span className="material-symbols-outlined" aria-hidden="true">
-                info
-              </span>
-            </div>
-            <div>
-              <h3 className="font-h3 text-body-lg text-on-surface mb-1">
-                Registro Centralizado
-              </h3>
-              <p className="font-body-md text-body-md text-on-surface-variant">
-                Al guardar, este ticket se publicará inmediatamente en la base
-                de datos global de Firestore para auditorías en tiempo real.
-              </p>
-            </div>
-          </div>
-          <div className="bg-surface-container rounded-xl p-md flex items-start gap-4">
-            <div className="bg-white p-2 rounded-lg text-primary flex-shrink-0 shadow-sm">
-              <span className="material-symbols-outlined" aria-hidden="true">
-                lock
-              </span>
-            </div>
-            <div>
-              <h3 className="font-h3 text-body-lg text-on-surface mb-1">
-                Estandarización Estricta
-              </h3>
-              <p className="font-body-md text-body-md text-on-surface-variant">
-                El estado se inicia por defecto en modo "Pendiente" y capturará
-                de forma automática la hora de tu estación de trabajo.
-              </p>
-            </div>
-          </div>
         </div>
       </div>
     </main>
